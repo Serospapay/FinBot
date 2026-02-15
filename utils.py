@@ -1,5 +1,4 @@
 """Утилітарні функції для валідації та обробки даних"""
-from datetime import datetime
 
 
 def validate_amount(text: str) -> tuple[bool, float]:
@@ -13,20 +12,6 @@ def validate_amount(text: str) -> tuple[bool, float]:
         return True, amount
     except (ValueError, TypeError):
         return False, 0
-
-
-def format_amount(amount: float) -> str:
-    """Форматування суми"""
-    return f"{amount:,.2f}".replace(',', ' ')
-
-
-def validate_date(date_str: str) -> bool:
-    """Валідація дати"""
-    try:
-        datetime.strptime(date_str, '%Y-%m-%d')
-        return True
-    except ValueError:
-        return False
 
 
 def get_safe_description(text: str, max_length: int = 200) -> str:

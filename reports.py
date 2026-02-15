@@ -1,14 +1,37 @@
+import io
+import logging
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 from datetime import datetime, timedelta
+
 from database import get_transactions, get_category_summary, get_balance
-import io
+
+logger = logging.getLogger(__name__)
 
 # Налаштування для українських символів
-plt.rcParams['font.family'] = 'DejaVu Sans'
-plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams["font.family"] = "DejaVu Sans"
+plt.rcParams["axes.unicode_minus"] = False
+
+
+def _strip_emoji_for_chart(text: str) -> str:
+    """Прибрати емодзі з підписів для matplotlib (DejaVu Sans не підтримує)"""
+    import re
+
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F300-\U0001F9FF"
+        "\U00002600-\U000027BF"
+        "\U0001F600-\U0001F64F"
+        "\U0001F680-\U0001F6FF"
+        "\U0001F1E0-\U0001F1FF"
+        "]+",
+        flags=re.UNICODE,
+    )
+    result = emoji_pattern.sub("", text).strip()
+    return result if result else "?"
 
 
 async def generate_report(user_id: int, start_date: str, end_date: str, period_name: str):
@@ -78,8 +101,8 @@ async def generate_pie_chart(user_id: int, trans_type: str, period_name: str):
         if not categories or len(categories) == 0:
             return None
         
-        # Підготовка даних
-        labels = [cat[0] for cat in categories]
+        # Підготовка даних (без емодзі для matplotlib)
+        labels = [_strip_emoji_for_chart(cat[0]) for cat in categories]
         sizes = [cat[1] for cat in categories]
         
         # Створення діаграми
@@ -115,7 +138,7 @@ async def generate_pie_chart(user_id: int, trans_type: str, period_name: str):
         
         return buf
     except Exception as e:
-        print(f"Помилка генерації графіка: {e}")
+        logger.error("Помилка генерації графіка: %s", e)
         return None
 
 
@@ -187,35 +210,36 @@ async def generate_dynamics_chart(user_id: int):
         
         return buf
     except Exception as e:
-        print(f"Помилка генерації графіка динаміки: {e}")
+        logger.error("Помилка генерації графіка динаміки: %s", e)
         return None
 
 
 def get_period_dates(period: str):
-    """Отримати дати початку та кінця періоду"""
-    end_date = datetime.now()
-    
-    if period == 'today':
-        start_date = end_date
+    """Отримати дати початку та кінця періоду (календарні місяць/рік)"""
+    today = datetime.now()
+    end_date = today
+
+    if period == "today":
+        start_date = today
         period_name = "Сьогодні"
-    elif period == 'yesterday':
-        start_date = end_date - timedelta(days=1)
+    elif period == "yesterday":
+        start_date = today - timedelta(days=1)
         end_date = start_date
         period_name = "Вчора"
-    elif period == 'week':
-        start_date = end_date - timedelta(days=7)
+    elif period == "week":
+        start_date = today - timedelta(days=7)
         period_name = "Тиждень"
-    elif period == 'month':
-        start_date = end_date - timedelta(days=30)
-        period_name = "Місяць"
-    elif period == 'year':
-        start_date = end_date - timedelta(days=365)
-        period_name = "Рік"
+    elif period == "month":
+        start_date = today.replace(day=1)
+        period_name = "Поточний місяць"
+    elif period == "year":
+        start_date = today.replace(month=1, day=1)
+        period_name = "Поточний рік"
     else:  # all
         start_date = datetime(2020, 1, 1)
         period_name = "Весь час"
-    
-    return start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'), period_name
+
+    return start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), period_name
 
 
 async def export_to_excel(user_id: int):
@@ -238,7 +262,7 @@ async def export_to_excel(user_id: int):
         
         return buf
     except Exception as e:
-        print(f"Помилка експорту в Excel: {e}")
+        logger.error("Помилка експорту в Excel: %s", e)
         return None
 
 
@@ -262,5 +286,5 @@ async def export_to_csv(user_id: int):
         
         return buf
     except Exception as e:
-        print(f"Помилка експорту в CSV: {e}")
+        logger.error("Помилка експорту в CSV: %s", e)
         return None

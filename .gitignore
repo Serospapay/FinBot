@@ -27,6 +27,9 @@ wheels/
 .env
 .venv
 
+# Lock file (захист від подвійного запуску)
+.finbot.lock
+
 # Database
 *.db
 *.sqlite
